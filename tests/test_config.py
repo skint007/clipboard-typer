@@ -14,6 +14,7 @@ from clipboard_typer.config import (
 class TestLoadConfigDefaults:
     def test_returns_defaults_when_no_file(self, tmp_path):
         config = load_config(tmp_path / "nonexistent.toml")
+        assert config.start_paused is False
         assert config.hotkey.combo == "ctrl+shift+v"
         assert config.typing.delay_ms == 10
         assert config.typing.chunk_size == 0
@@ -72,6 +73,7 @@ class TestSaveConfig:
         path = tmp_path / "config.toml"
         save_config(AppConfig(), path)
         loaded = load_config(path)
+        assert loaded.start_paused is False
         assert loaded.hotkey.combo == "ctrl+shift+v"
         assert loaded.typing.delay_ms == 10
         assert loaded.typing.chunk_size == 0
@@ -82,6 +84,7 @@ class TestSaveConfig:
     def test_roundtrip_custom(self, tmp_path):
         path = tmp_path / "config.toml"
         config = AppConfig(
+            start_paused=True,
             hotkey=HotkeyConfig(combo="alt+v"),
             typing=TypingConfig(delay_ms=50, chunk_size=100,
                                 start_delay_ms=500, compensate_indent=True),
@@ -89,6 +92,7 @@ class TestSaveConfig:
         )
         save_config(config, path)
         loaded = load_config(path)
+        assert loaded.start_paused is True
         assert loaded.hotkey.combo == "alt+v"
         assert loaded.typing.delay_ms == 50
         assert loaded.typing.chunk_size == 100

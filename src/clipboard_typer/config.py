@@ -27,6 +27,7 @@ class PlatformConfig:
 
 @dataclass
 class AppConfig:
+    start_paused: bool = False
     hotkey: HotkeyConfig = field(default_factory=HotkeyConfig)
     typing: TypingConfig = field(default_factory=TypingConfig)
     platform: PlatformConfig = field(default_factory=PlatformConfig)
@@ -70,6 +71,8 @@ def load_config(path: Path | None = None) -> AppConfig:
         logger.warning("Failed to read config %s: %s; using defaults", path, e)
         return config
 
+    config.start_paused = _safe_get(data, "start_paused", bool, config.start_paused)
+
     if "hotkey" in data:
         h = data["hotkey"]
         config.hotkey.combo = _safe_get(h, "combo", str, config.hotkey.combo)
@@ -92,6 +95,8 @@ def load_config(path: Path | None = None) -> AppConfig:
 def save_config(config: AppConfig, path: Path) -> None:
     """Write config to a TOML file."""
     lines = [
+        f"start_paused = {'true' if config.start_paused else 'false'}",
+        "",
         "[hotkey]",
         f'combo = "{config.hotkey.combo}"',
         "",

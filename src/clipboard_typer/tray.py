@@ -75,6 +75,7 @@ class TrayIcon:
         from clipboard_typer.settings_dialog import SettingsDialog
 
         def on_save(new_config: AppConfig, hotkey_changed: bool):
+            self._config.start_paused = new_config.start_paused
             self._config.typing.delay_ms = new_config.typing.delay_ms
             self._config.typing.chunk_size = new_config.typing.chunk_size
             self._config.typing.start_delay_ms = new_config.typing.start_delay_ms
@@ -99,7 +100,7 @@ class TrayIcon:
         self._Image = Image
         self._ImageDraw = ImageDraw
 
-        image = self._create_icon_image(paused=False)
+        image = self._create_icon_image(paused=self._paused_event.is_set())
 
         menu = Menu(
             MenuItem("Clipboard Typer", None, enabled=False),

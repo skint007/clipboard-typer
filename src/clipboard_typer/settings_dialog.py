@@ -135,9 +135,18 @@ class SettingsDialog:
 
         pad = {"padx": 10, "pady": 5}
 
+        # --- General section ---
+        general_frame = ttk.LabelFrame(root, text="General", padding=10)
+        general_frame.grid(row=0, column=0, sticky="ew", **pad)
+        general_frame.columnconfigure(0, weight=1)
+
+        start_paused_var = tk.BooleanVar(value=self._config.start_paused)
+        _ToggleRow(general_frame, "Start paused", start_paused_var,
+                   theme).grid(row=0, column=0, sticky="ew")
+
         # --- Hotkey section ---
         hotkey_frame = ttk.LabelFrame(root, text="Hotkey", padding=10)
-        hotkey_frame.grid(row=0, column=0, sticky="ew", **pad)
+        hotkey_frame.grid(row=1, column=0, sticky="ew", **pad)
         hotkey_frame.columnconfigure(1, weight=1)
 
         ttk.Label(hotkey_frame, text="Combo").grid(row=0, column=0, sticky="w")
@@ -148,7 +157,7 @@ class SettingsDialog:
 
         # --- Typing section ---
         typing_frame = ttk.LabelFrame(root, text="Typing", padding=10)
-        typing_frame.grid(row=1, column=0, sticky="ew", **pad)
+        typing_frame.grid(row=2, column=0, sticky="ew", **pad)
         typing_frame.columnconfigure(1, weight=1)
 
         ttk.Label(typing_frame, text="Delay (ms)").grid(row=0, column=0, sticky="w")
@@ -178,7 +187,7 @@ class SettingsDialog:
 
         # --- Platform section ---
         platform_frame = ttk.LabelFrame(root, text="Platform", padding=10)
-        platform_frame.grid(row=2, column=0, sticky="ew", **pad)
+        platform_frame.grid(row=3, column=0, sticky="ew", **pad)
         platform_frame.columnconfigure(0, weight=1)
 
         prefer_native_var = tk.BooleanVar(value=self._config.platform.prefer_native)
@@ -187,7 +196,7 @@ class SettingsDialog:
 
         # --- Buttons ---
         btn_frame = ttk.Frame(root)
-        btn_frame.grid(row=3, column=0, sticky="e", **pad)
+        btn_frame.grid(row=4, column=0, sticky="e", **pad)
 
         def on_save():
             delay = _validate_int("Delay (ms)", delay_var.get())
@@ -197,6 +206,7 @@ class SettingsDialog:
                 return
 
             new_config = AppConfig(
+                start_paused=start_paused_var.get(),
                 hotkey=HotkeyConfig(combo=combo_var.get().strip()),
                 typing=TypingConfig(
                     delay_ms=delay,

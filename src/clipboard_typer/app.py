@@ -63,6 +63,9 @@ def main():
 
     shutdown_event = threading.Event()
     paused_event = threading.Event()
+    if config.start_paused:
+        paused_event.set()
+        logger.info("Starting in paused state")
 
     def handle_shutdown(*_):
         logger.info("Shutting down...")
