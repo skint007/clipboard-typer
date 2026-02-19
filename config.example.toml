@@ -1,0 +1,18 @@
+# Clipboard Typer configuration
+# Copy this file to ~/.config/clipboard-typer/config.toml
+
+[hotkey]
+# Key combination to trigger typing (modifiers: ctrl, shift, alt, cmd/super)
+combo = "ctrl+shift+v"
+
+[typing]
+# Milliseconds between each keystroke (increase if characters are dropped)
+delay_ms = 10
+# Number of characters per chunk (0 = type all at once)
+chunk_size = 0
+# Milliseconds to wait before typing starts (lets you release modifier keys)
+start_delay_ms = 300
+
+[platform]
+# Try pynput first before falling back to wtype/xdotool
+prefer_native = true
