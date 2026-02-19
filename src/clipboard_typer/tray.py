@@ -21,14 +21,42 @@ class TrayIcon:
 
     def _create_icon_image(self, paused: bool):
         """Create the tray icon image with visual state indication."""
+        S = 64
+        image = self._Image.new("RGBA", (S, S), (0, 0, 0, 0))
+        draw = self._ImageDraw.Draw(image)
+
         if paused:
-            image = self._Image.new("RGB", (64, 64), color=(60, 20, 20))
-            draw = self._ImageDraw.Draw(image)
-            draw.text((12, 16), "CT", fill=(120, 120, 120))
+            board = (100, 100, 100, 255)
+            clip = (80, 80, 80, 255)
+            lines = (70, 70, 70, 255)
         else:
-            image = self._Image.new("RGB", (64, 64), color=(30, 30, 30))
-            draw = self._ImageDraw.Draw(image)
-            draw.text((12, 16), "CT", fill=(0, 180, 255))
+            board = (0, 150, 214, 255)
+            clip = (0, 120, 180, 255)
+            lines = (255, 255, 255, 200)
+
+        # Clipboard board
+        draw.rounded_rectangle([8, 14, 56, 60], radius=5, fill=board)
+
+        # Clip at top (outer)
+        draw.rounded_rectangle([20, 4, 44, 20], radius=4, fill=clip)
+        # Clip hole (inner cutout)
+        draw.rounded_rectangle([25, 7, 39, 16], radius=3, fill=(0, 0, 0, 0))
+
+        # Text lines on clipboard
+        for y in (26, 34, 42):
+            w = 32 if y < 42 else 20  # shorter last line
+            draw.rounded_rectangle([16, y, 16 + w, y + 3], radius=1, fill=lines)
+
+        # Typing cursor on last line
+        if not paused:
+            draw.rectangle([38, 41, 40, 47], fill=(255, 255, 255, 240))
+
+        # Paused overlay: two vertical bars
+        if paused:
+            bar = (200, 60, 60, 220)
+            draw.rounded_rectangle([22, 28, 29, 48], radius=2, fill=bar)
+            draw.rounded_rectangle([35, 28, 42, 48], radius=2, fill=bar)
+
         return image
 
     def _toggle_pause(self, icon, item):
