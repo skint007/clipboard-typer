@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clipboard-typer"
+version = "0.1.0"
+description = "Type clipboard contents keystroke-by-keystroke into the active window"
+requires-python = ">=3.12"
+dependencies = [
+    "pynput>=1.7.6",
+    "pyperclip>=1.8.0",
+]
+
+[project.optional-dependencies]
+tray = ["pystray>=0.19", "Pillow>=10.0"]
+dev = ["pytest>=8.0", "pytest-mock>=3.12"]
+
+[project.scripts]
+clipboard-typer = "clipboard_typer.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clipboard_typer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
