@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "clipboard-typer"
 version = "0.1.0"
 description = "Type clipboard contents keystroke-by-keystroke into the active window"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "pynput>=1.7.6",
@@ -18,6 +19,10 @@ dev = ["pytest>=8.0", "pytest-mock>=3.12"]
 
 [project.scripts]
 clipboard-typer = "clipboard_typer.app:main"
+
+[project.urls]
+Homepage = "https://github.com/skint007/key-sender"
+Source = "https://github.com/skint007/key-sender"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/clipboard_typer"]
