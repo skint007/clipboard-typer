@@ -1,0 +1,13 @@
+[Unit]
+Description=Clipboard Typer - type clipboard contents keystroke-by-keystroke
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/clipboard-typer
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

@@ -14,8 +14,12 @@ from clipboard_typer.typer import select_typer
 logger = logging.getLogger(__name__)
 
 
-def on_hotkey_triggered(typer_backend, typing_config):
+def on_hotkey_triggered(typer_backend, typing_config, paused_event):
     """Called when the global hotkey is pressed."""
+    if paused_event.is_set():
+        logger.debug("Hotkey pressed but typing is paused; ignoring.")
+        return
+
     try:
         text = read_clipboard()
     except ClipboardError as e:
@@ -30,7 +34,8 @@ def on_hotkey_triggered(typer_backend, typing_config):
     time.sleep(delay)
 
     try:
-        typer_backend.type_text(text, typing_config.delay_ms, typing_config.chunk_size)
+        typer_backend.type_text(text, typing_config.delay_ms, typing_config.chunk_size,
+                               typing_config.compensate_indent)
         logger.info("Finished typing %d characters.", len(text))
     except Exception:
         logger.exception("Typing failed")
@@ -56,6 +61,7 @@ def main():
     logger.info("Using typing backend: %s", type(typer_backend).__name__)
 
     shutdown_event = threading.Event()
+    paused_event = threading.Event()
 
     def handle_shutdown(*_):
         logger.info("Shutting down...")
@@ -64,7 +70,7 @@ def main():
     signal.signal(signal.SIGINT, handle_shutdown)
     signal.signal(signal.SIGTERM, handle_shutdown)
 
-    callback = lambda: on_hotkey_triggered(typer_backend, config.typing)
+    callback = lambda: on_hotkey_triggered(typer_backend, config.typing, paused_event)
     listener = HotkeyListener(config.hotkey, callback)
     listener.start()
     logger.info("Listening for hotkey: %s", config.hotkey.combo)
@@ -72,7 +78,7 @@ def main():
     tray = None
     if not args.no_tray:
         from clipboard_typer.tray import TrayIcon
-        tray = TrayIcon(on_quit=handle_shutdown)
+        tray = TrayIcon(on_quit=handle_shutdown, paused_event=paused_event)
         tray.start()
 
     try:

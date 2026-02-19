@@ -56,6 +56,30 @@ class TestPynputTyper:
         mock_sleep.assert_not_called()
 
 
+class TestPynputTyperCompensateIndent:
+    @patch("clipboard_typer.typer.time.sleep")
+    def test_newline_sends_home_shift_end(self, mock_sleep):
+        mock_controller = MagicMock()
+        with patch("pynput.keyboard.Controller", return_value=mock_controller):
+            with patch("pynput.keyboard.Key") as mock_key:
+                mock_key.enter = "ENTER"
+                mock_key.home = "HOME"
+                mock_key.shift = "SHIFT"
+                mock_key.end = "END"
+                typer = PynputTyper()
+                typer._special_keys["\n"] = mock_key.enter
+
+        typer.type_text("a\nb", delay_ms=0, chunk_size=0, compensate_indent=True)
+        calls = mock_controller.press.call_args_list
+        # a, Enter, Home, Shift, End, b
+        assert calls[0] == call("a")
+        assert calls[1] == call("ENTER")
+        assert calls[2] == call("HOME")
+        assert calls[3] == call("SHIFT")
+        assert calls[4] == call("END")
+        assert calls[5] == call("b")
+
+
 class TestWtypeTyper:
     @patch("clipboard_typer.typer.subprocess.run")
     def test_runs_wtype_command(self, mock_run):
@@ -65,6 +89,15 @@ class TestWtypeTyper:
             ["wtype", "-d", "10", "-"],
             input="hello", text=True, check=True,
         )
+
+
+class TestWtypeTyperCompensateIndent:
+    @patch("clipboard_typer.typer.subprocess.run")
+    def test_splits_lines_with_key_commands(self, mock_run):
+        typer = WtypeTyper()
+        typer.type_text("a\nb", delay_ms=10, chunk_size=0, compensate_indent=True)
+        # line "a" (1), Return (1), Home (1), Shift+End (1), line "b" (1) = 5
+        assert mock_run.call_count == 5
 
 
 class TestYdotoolTyper:
@@ -78,6 +111,15 @@ class TestYdotoolTyper:
         )
 
 
+class TestYdotoolTyperCompensateIndent:
+    @patch("clipboard_typer.typer.subprocess.run")
+    def test_splits_lines_with_key_commands(self, mock_run):
+        typer = YdotoolTyper()
+        typer.type_text("a\nb", delay_ms=10, chunk_size=0, compensate_indent=True)
+        # line "a" (1), Enter key (1), Home key (1), Shift+End key (1), line "b" (1) = 5
+        assert mock_run.call_count == 5
+
+
 class TestXdotoolTyper:
     @patch("clipboard_typer.typer.subprocess.run")
     def test_runs_xdotool_command(self, mock_run):
@@ -87,6 +129,15 @@ class TestXdotoolTyper:
             ["xdotool", "type", "--clearmodifiers", "--delay", "10", "--file", "-"],
             input="hello", text=True, check=True,
         )
+
+
+class TestXdotoolTyperCompensateIndent:
+    @patch("clipboard_typer.typer.subprocess.run")
+    def test_splits_lines_with_key_commands(self, mock_run):
+        typer = XdotoolTyper()
+        typer.type_text("a\nb", delay_ms=10, chunk_size=0, compensate_indent=True)
+        # line "a" (1), Return key (1), Home key (1), shift+End key (1), line "b" (1) = 5
+        assert mock_run.call_count == 5
 
 
 class TestSelectTyper:

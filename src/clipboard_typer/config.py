@@ -17,6 +17,7 @@ class TypingConfig:
     delay_ms: int = 10
     chunk_size: int = 0  # 0 = type everything at once
     start_delay_ms: int = 300  # delay before typing to let modifier keys be released
+    compensate_indent: bool = False  # clear editor auto-indent after newlines
 
 
 @dataclass
@@ -77,6 +78,7 @@ def load_config(path: Path | None = None) -> AppConfig:
         config.typing.delay_ms = _safe_get(t, "delay_ms", int, config.typing.delay_ms)
         config.typing.chunk_size = _safe_get(t, "chunk_size", int, config.typing.chunk_size)
         config.typing.start_delay_ms = _safe_get(t, "start_delay_ms", int, config.typing.start_delay_ms)
+        config.typing.compensate_indent = _safe_get(t, "compensate_indent", bool, config.typing.compensate_indent)
 
     if "platform" in data:
         p = data["platform"]

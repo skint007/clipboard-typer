@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 class TyperBackend(ABC):
     @abstractmethod
-    def type_text(self, text: str, delay_ms: int, chunk_size: int) -> None:
+    def type_text(self, text: str, delay_ms: int, chunk_size: int,
+                  compensate_indent: bool = False) -> None:
         """Type the given text."""
 
 
@@ -20,18 +21,34 @@ class PynputTyper(TyperBackend):
     def __init__(self):
         from pynput.keyboard import Controller, Key
         self._controller = Controller()
+        self._Key = Key
         self._special_keys = {
             "\n": Key.enter,
             "\r": Key.enter,
             "\t": Key.tab,
         }
 
-    def type_text(self, text: str, delay_ms: int, chunk_size: int) -> None:
+    def type_text(self, text: str, delay_ms: int, chunk_size: int,
+                  compensate_indent: bool = False) -> None:
         delay_s = delay_ms / 1000.0
+        Key = self._Key
         for char in text:
-            key = self._special_keys.get(char, char)
-            self._controller.press(key)
-            self._controller.release(key)
+            if char == "\n" and compensate_indent:
+                # Enter, then Home + Shift+End to select any auto-indent
+                self._controller.press(Key.enter)
+                self._controller.release(Key.enter)
+                if delay_s > 0:
+                    time.sleep(delay_s)
+                self._controller.press(Key.home)
+                self._controller.release(Key.home)
+                self._controller.press(Key.shift)
+                self._controller.press(Key.end)
+                self._controller.release(Key.end)
+                self._controller.release(Key.shift)
+            else:
+                key = self._special_keys.get(char, char)
+                self._controller.press(key)
+                self._controller.release(key)
             if delay_s > 0:
                 time.sleep(delay_s)
 
@@ -39,29 +56,95 @@ class PynputTyper(TyperBackend):
 class WtypeTyper(TyperBackend):
     """Uses wtype subprocess for Wayland keystroke simulation."""
 
-    def type_text(self, text: str, delay_ms: int, chunk_size: int) -> None:
-        cmd = ["wtype", "-d", str(delay_ms), "-"]
-        logger.debug("Running: %s (stdin: %d chars)", cmd, len(text))
-        subprocess.run(cmd, input=text, text=True, check=True)
+    def type_text(self, text: str, delay_ms: int, chunk_size: int,
+                  compensate_indent: bool = False) -> None:
+        if not compensate_indent:
+            cmd = ["wtype", "-d", str(delay_ms), "-"]
+            logger.debug("Running: %s (stdin: %d chars)", cmd, len(text))
+            subprocess.run(cmd, input=text, text=True, check=True)
+        else:
+            self._type_with_indent_compensation(text, delay_ms)
+
+    def _type_with_indent_compensation(self, text: str, delay_ms: int) -> None:
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if i > 0:
+                subprocess.run(["wtype", "-k", "Return"], check=True)
+                subprocess.run(["wtype", "-k", "Home"], check=True)
+                subprocess.run(
+                    ["wtype", "-M", "shift", "-k", "End", "-m", "shift"],
+                    check=True,
+                )
+            if line:
+                subprocess.run(
+                    ["wtype", "-d", str(delay_ms), "--", line],
+                    text=True, check=True,
+                )
 
 
 class YdotoolTyper(TyperBackend):
     """Uses ydotool for keystroke simulation (works on any Wayland compositor via uinput)."""
 
-    def type_text(self, text: str, delay_ms: int, chunk_size: int) -> None:
-        cmd = ["ydotool", "type", "--key-delay", str(delay_ms), "--", text]
-        logger.debug("Running: ydotool type (%d chars)", len(text))
-        subprocess.run(cmd, check=True)
+    # evdev key codes
+    _KEY_ENTER = "28:1 28:0"
+    _KEY_HOME = "102:1 102:0"
+    _KEY_SHIFT_END = "42:1 107:1 107:0 42:0"  # Shift down, End press/release, Shift up
+
+    def type_text(self, text: str, delay_ms: int, chunk_size: int,
+                  compensate_indent: bool = False) -> None:
+        if not compensate_indent:
+            cmd = ["ydotool", "type", "--key-delay", str(delay_ms), "--", text]
+            logger.debug("Running: ydotool type (%d chars)", len(text))
+            subprocess.run(cmd, check=True)
+        else:
+            self._type_with_indent_compensation(text, delay_ms)
+
+    def _type_with_indent_compensation(self, text: str, delay_ms: int) -> None:
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if i > 0:
+                subprocess.run(
+                    ["ydotool", "key", *self._KEY_ENTER.split()], check=True
+                )
+                subprocess.run(
+                    ["ydotool", "key", *self._KEY_HOME.split()], check=True
+                )
+                subprocess.run(
+                    ["ydotool", "key", *self._KEY_SHIFT_END.split()], check=True
+                )
+            if line:
+                subprocess.run(
+                    ["ydotool", "type", "--key-delay", str(delay_ms), "--", line],
+                    check=True,
+                )
 
 
 class XdotoolTyper(TyperBackend):
     """Uses xdotool subprocess for X11 keystroke simulation."""
 
-    def type_text(self, text: str, delay_ms: int, chunk_size: int) -> None:
-        cmd = ["xdotool", "type", "--clearmodifiers", "--delay", str(delay_ms),
-               "--file", "-"]
-        logger.debug("Running: %s (stdin: %d chars)", cmd, len(text))
-        subprocess.run(cmd, input=text, text=True, check=True)
+    def type_text(self, text: str, delay_ms: int, chunk_size: int,
+                  compensate_indent: bool = False) -> None:
+        if not compensate_indent:
+            cmd = ["xdotool", "type", "--clearmodifiers", "--delay", str(delay_ms),
+                   "--file", "-"]
+            logger.debug("Running: %s (stdin: %d chars)", cmd, len(text))
+            subprocess.run(cmd, input=text, text=True, check=True)
+        else:
+            self._type_with_indent_compensation(text, delay_ms)
+
+    def _type_with_indent_compensation(self, text: str, delay_ms: int) -> None:
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if i > 0:
+                subprocess.run(["xdotool", "key", "Return"], check=True)
+                subprocess.run(["xdotool", "key", "Home"], check=True)
+                subprocess.run(["xdotool", "key", "shift+End"], check=True)
+            if line:
+                subprocess.run(
+                    ["xdotool", "type", "--clearmodifiers", "--delay",
+                     str(delay_ms), "--file", "-"],
+                    input=line, text=True, check=True,
+                )
 
 
 class NoBackendError(RuntimeError):
