@@ -1,14 +1,20 @@
 import logging
 import threading
+from pathlib import Path
 from typing import Callable
+
+from clipboard_typer.config import AppConfig
 
 logger = logging.getLogger(__name__)
 
 
 class TrayIcon:
-    def __init__(self, on_quit: Callable[[], None], paused_event: threading.Event):
+    def __init__(self, on_quit: Callable[[], None], paused_event: threading.Event,
+                 config: AppConfig, config_path: Path):
         self._on_quit = on_quit
         self._paused_event = paused_event
+        self._config = config
+        self._config_path = config_path
         self._icon = None
         self._Image = None
         self._ImageDraw = None
@@ -36,6 +42,23 @@ class TrayIcon:
         icon.icon = self._create_icon_image(self._paused_event.is_set())
         icon.update_menu()
 
+    def _open_settings(self, icon, item):
+        """Open the settings dialog in a new thread."""
+        from clipboard_typer.settings_dialog import SettingsDialog
+
+        def on_save(new_config: AppConfig, hotkey_changed: bool):
+            self._config.typing.delay_ms = new_config.typing.delay_ms
+            self._config.typing.chunk_size = new_config.typing.chunk_size
+            self._config.typing.start_delay_ms = new_config.typing.start_delay_ms
+            self._config.typing.compensate_indent = new_config.typing.compensate_indent
+            self._config.platform.prefer_native = new_config.platform.prefer_native
+            if hotkey_changed:
+                self._config.hotkey.combo = new_config.hotkey.combo
+
+        dialog = SettingsDialog(self._config, self._config_path, on_save)
+        thread = threading.Thread(target=dialog.open, daemon=True)
+        thread.start()
+
     def start(self) -> None:
         try:
             from pystray import Icon, Menu, MenuItem
@@ -57,6 +80,8 @@ class TrayIcon:
                 lambda item: "Resume" if self._paused_event.is_set() else "Pause",
                 self._toggle_pause,
             ),
+            MenuItem("Settings", self._open_settings),
+            Menu.SEPARATOR,
             MenuItem("Quit", lambda _icon, _item: self._on_quit()),
         )
         self._icon = Icon("clipboard-typer", image, "Clipboard Typer", menu)

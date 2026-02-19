@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from clipboard_typer.clipboard import ClipboardError, read_clipboard
-from clipboard_typer.config import load_config
+from clipboard_typer.config import default_config_path, load_config
 from clipboard_typer.hotkey import HotkeyListener
 from clipboard_typer.platform_detect import detect_platform
 from clipboard_typer.typer import select_typer
@@ -53,7 +53,8 @@ def main():
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    config = load_config(args.config)
+    config_path = args.config if args.config else default_config_path()
+    config = load_config(config_path)
     platform_info = detect_platform()
     logger.info("Platform: %s, display: %s", platform_info.os.name, platform_info.display_server.name)
 
@@ -78,7 +79,8 @@ def main():
     tray = None
     if not args.no_tray:
         from clipboard_typer.tray import TrayIcon
-        tray = TrayIcon(on_quit=handle_shutdown, paused_event=paused_event)
+        tray = TrayIcon(on_quit=handle_shutdown, paused_event=paused_event,
+                        config=config, config_path=config_path)
         tray.start()
 
     try:

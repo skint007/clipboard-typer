@@ -1,7 +1,14 @@
 import textwrap
 from pathlib import Path
 
-from clipboard_typer.config import AppConfig, load_config
+from clipboard_typer.config import (
+    AppConfig,
+    HotkeyConfig,
+    PlatformConfig,
+    TypingConfig,
+    load_config,
+    save_config,
+)
 
 
 class TestLoadConfigDefaults:
@@ -58,6 +65,51 @@ class TestLoadConfigFromFile:
         cfg_file.write_text("this is not valid toml [[[")
         config = load_config(cfg_file)
         assert config.hotkey.combo == "ctrl+shift+v"
+
+
+class TestSaveConfig:
+    def test_roundtrip_defaults(self, tmp_path):
+        path = tmp_path / "config.toml"
+        save_config(AppConfig(), path)
+        loaded = load_config(path)
+        assert loaded.hotkey.combo == "ctrl+shift+v"
+        assert loaded.typing.delay_ms == 10
+        assert loaded.typing.chunk_size == 0
+        assert loaded.typing.start_delay_ms == 300
+        assert loaded.typing.compensate_indent is False
+        assert loaded.platform.prefer_native is True
+
+    def test_roundtrip_custom(self, tmp_path):
+        path = tmp_path / "config.toml"
+        config = AppConfig(
+            hotkey=HotkeyConfig(combo="alt+v"),
+            typing=TypingConfig(delay_ms=50, chunk_size=100,
+                                start_delay_ms=500, compensate_indent=True),
+            platform=PlatformConfig(prefer_native=False),
+        )
+        save_config(config, path)
+        loaded = load_config(path)
+        assert loaded.hotkey.combo == "alt+v"
+        assert loaded.typing.delay_ms == 50
+        assert loaded.typing.chunk_size == 100
+        assert loaded.typing.start_delay_ms == 500
+        assert loaded.typing.compensate_indent is True
+        assert loaded.platform.prefer_native is False
+
+    def test_creates_parent_directories(self, tmp_path):
+        path = tmp_path / "subdir" / "nested" / "config.toml"
+        save_config(AppConfig(), path)
+        assert path.is_file()
+
+    def test_output_is_valid_toml(self, tmp_path):
+        import tomllib
+        path = tmp_path / "config.toml"
+        save_config(AppConfig(), path)
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+        assert "hotkey" in data
+        assert "typing" in data
+        assert "platform" in data
 
 
 class TestLoadConfigDefaultPath:

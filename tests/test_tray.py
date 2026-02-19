@@ -1,6 +1,8 @@
 import threading
+from pathlib import Path
 from unittest.mock import MagicMock
 
+from clipboard_typer.config import AppConfig
 from clipboard_typer.tray import TrayIcon
 
 
@@ -9,7 +11,9 @@ class TestTrayIconPauseToggle:
         event = threading.Event()
         if paused:
             event.set()
-        tray = TrayIcon(on_quit=lambda: None, paused_event=event)
+        config = AppConfig()
+        tray = TrayIcon(on_quit=lambda: None, paused_event=event,
+                        config=config, config_path=Path("/tmp/test.toml"))
         tray._Image = MagicMock()
         tray._ImageDraw = MagicMock()
         return tray, event

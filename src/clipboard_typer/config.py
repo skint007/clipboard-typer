@@ -32,7 +32,8 @@ class AppConfig:
     platform: PlatformConfig = field(default_factory=PlatformConfig)
 
 
-def _default_config_path() -> Path:
+def default_config_path() -> Path:
+    """Return the default config file path, respecting XDG_CONFIG_HOME."""
     xdg = os.environ.get("XDG_CONFIG_HOME", "")
     base = Path(xdg) if xdg else Path.home() / ".config"
     return base / "clipboard-typer" / "config.toml"
@@ -55,7 +56,7 @@ def load_config(path: Path | None = None) -> AppConfig:
     config = AppConfig()
 
     if path is None:
-        path = _default_config_path()
+        path = default_config_path()
 
     if not path.is_file():
         logger.debug("No config file at %s, using defaults", path)
@@ -86,3 +87,24 @@ def load_config(path: Path | None = None) -> AppConfig:
                                                    config.platform.prefer_native)
 
     return config
+
+
+def save_config(config: AppConfig, path: Path) -> None:
+    """Write config to a TOML file."""
+    lines = [
+        "[hotkey]",
+        f'combo = "{config.hotkey.combo}"',
+        "",
+        "[typing]",
+        f"delay_ms = {config.typing.delay_ms}",
+        f"chunk_size = {config.typing.chunk_size}",
+        f"start_delay_ms = {config.typing.start_delay_ms}",
+        f"compensate_indent = {'true' if config.typing.compensate_indent else 'false'}",
+        "",
+        "[platform]",
+        f"prefer_native = {'true' if config.platform.prefer_native else 'false'}",
+        "",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
+    logger.info("Config saved to %s", path)
