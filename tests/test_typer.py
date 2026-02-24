@@ -1,6 +1,15 @@
+import sys
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+
+# Provide a fake pynput.keyboard module so PynputTyper can be instantiated
+# on headless CI runners that have no X display.
+_mock_keyboard = MagicMock()
+_mock_keyboard.Controller = MagicMock
+_mock_keyboard.Key = MagicMock()
+sys.modules.setdefault("pynput", MagicMock(keyboard=_mock_keyboard))
+sys.modules.setdefault("pynput.keyboard", _mock_keyboard)
 
 from clipboard_typer.platform_detect import OS, DisplayServer, PlatformInfo
 from clipboard_typer.typer import (
