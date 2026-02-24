@@ -1,0 +1,207 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  # ─── Test ─────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev,tray]
+
+      - name: Run tests
+        run: python -m pytest --tb=short -q
+
+  # ─── PyInstaller builds ──────────────────────────────────────
+  build-pyinstaller:
+    name: PyInstaller (${{ matrix.os-label }})
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            os-label: linux
+            artifact-name: clipboard-typer-linux
+            binary-path: dist/clipboard-typer
+          - runner: windows-latest
+            os-label: windows
+            artifact-name: clipboard-typer-windows
+            binary-path: dist/clipboard-typer.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[tray]
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller clipboard-typer.spec
+
+      - name: Verify binary exists
+        run: ls -la ${{ matrix.binary-path }}
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.binary-path }}
+
+  # ─── Nuitka builds (optional) ────────────────────────────────
+  build-nuitka:
+    name: Nuitka (${{ matrix.os-label }})
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            os-label: linux
+            artifact-name: clipboard-typer-nuitka-linux
+          - runner: windows-latest
+            os-label: windows
+            artifact-name: clipboard-typer-nuitka-windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf ccache
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[tray]
+          pip install nuitka ordered-set zstandard
+
+      - name: Build with Nuitka (Linux)
+        if: runner.os == 'Linux'
+        run: bash scripts/build_nuitka.sh
+
+      - name: Build with Nuitka (Windows)
+        if: runner.os == 'Windows'
+        run: scripts/build_nuitka.bat
+
+      - name: Upload artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: clipboard-typer-nuitka
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: clipboard-typer-nuitka.exe
+
+  # ─── Create GitHub Release ───────────────────────────────────
+  release:
+    name: GitHub Release
+    needs: [build-pyinstaller, build-nuitka]
+    if: always() && needs.build-pyinstaller.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          # PyInstaller binaries
+          if [ -f release-artifacts/clipboard-typer-linux/clipboard-typer ]; then
+            cp release-artifacts/clipboard-typer-linux/clipboard-typer release-files/clipboard-typer-linux
+            chmod +x release-files/clipboard-typer-linux
+          fi
+          if [ -f release-artifacts/clipboard-typer-windows/clipboard-typer.exe ]; then
+            cp release-artifacts/clipboard-typer-windows/clipboard-typer.exe release-files/clipboard-typer-windows.exe
+          fi
+          # Nuitka binaries (may not exist if nuitka failed)
+          if [ -f release-artifacts/clipboard-typer-nuitka-linux/clipboard-typer-nuitka ]; then
+            cp release-artifacts/clipboard-typer-nuitka-linux/clipboard-typer-nuitka release-files/clipboard-typer-nuitka-linux
+            chmod +x release-files/clipboard-typer-nuitka-linux
+          fi
+          if [ -f release-artifacts/clipboard-typer-nuitka-windows/clipboard-typer-nuitka.exe ]; then
+            cp release-artifacts/clipboard-typer-nuitka-windows/clipboard-typer-nuitka.exe release-files/clipboard-typer-nuitka-windows.exe
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-files/*
+
+  # ─── Publish to AUR ──────────────────────────────────────────
+  publish-aur:
+    name: Publish to AUR
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update PKGBUILD version
+        run: |
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" aur/PKGBUILD
+
+      - name: Update .SRCINFO version
+        run: |
+          sed -i "s/pkgver = .*/pkgver = ${{ steps.version.outputs.version }}/" aur/.SRCINFO
+          sed -i "s|source = clipboard-typer-.*\.tar\.gz::.*|source = clipboard-typer-${{ steps.version.outputs.version }}.tar.gz::https://github.com/skint007/key-sender/archive/v${{ steps.version.outputs.version }}.tar.gz|" aur/.SRCINFO
+
+      - name: Deploy to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: clipboard-typer
+          pkgbuild_path: aur/PKGBUILD
+          assets: |
+            aur/.SRCINFO
+          commit_username: skint007
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          force_push: true
