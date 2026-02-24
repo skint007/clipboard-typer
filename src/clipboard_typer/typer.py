@@ -14,6 +14,10 @@ class TyperBackend(ABC):
                   compensate_indent: bool = False) -> None:
         """Type the given text."""
 
+    @abstractmethod
+    def erase_trigger_key(self) -> None:
+        """Send Backspace to erase the character produced by the hotkey trigger."""
+
 
 class PynputTyper(TyperBackend):
     """Uses pynput.keyboard.Controller for keystroke simulation."""
@@ -27,6 +31,10 @@ class PynputTyper(TyperBackend):
             "\r": Key.enter,
             "\t": Key.tab,
         }
+
+    def erase_trigger_key(self) -> None:
+        self._controller.press(self._Key.backspace)
+        self._controller.release(self._Key.backspace)
 
     def type_text(self, text: str, delay_ms: int, chunk_size: int,
                   compensate_indent: bool = False) -> None:
@@ -55,6 +63,9 @@ class PynputTyper(TyperBackend):
 
 class WtypeTyper(TyperBackend):
     """Uses wtype subprocess for Wayland keystroke simulation."""
+
+    def erase_trigger_key(self) -> None:
+        subprocess.run(["wtype", "-k", "BackSpace"], check=True)
 
     def type_text(self, text: str, delay_ms: int, chunk_size: int,
                   compensate_indent: bool = False) -> None:
@@ -86,9 +97,13 @@ class YdotoolTyper(TyperBackend):
     """Uses ydotool for keystroke simulation (works on any Wayland compositor via uinput)."""
 
     # evdev key codes
+    _KEY_BACKSPACE = "14:1 14:0"
     _KEY_ENTER = "28:1 28:0"
     _KEY_HOME = "102:1 102:0"
     _KEY_SHIFT_END = "42:1 107:1 107:0 42:0"  # Shift down, End press/release, Shift up
+
+    def erase_trigger_key(self) -> None:
+        subprocess.run(["ydotool", "key", *self._KEY_BACKSPACE.split()], check=True)
 
     def type_text(self, text: str, delay_ms: int, chunk_size: int,
                   compensate_indent: bool = False) -> None:
@@ -121,6 +136,9 @@ class YdotoolTyper(TyperBackend):
 
 class XdotoolTyper(TyperBackend):
     """Uses xdotool subprocess for X11 keystroke simulation."""
+
+    def erase_trigger_key(self) -> None:
+        subprocess.run(["xdotool", "key", "BackSpace"], check=True)
 
     def type_text(self, text: str, delay_ms: int, chunk_size: int,
                   compensate_indent: bool = False) -> None:

@@ -23,6 +23,7 @@ class TestOnHotkeyTriggered:
             with patch("clipboard_typer.app.time.sleep"):
                 on_hotkey_triggered(mock_typer, TypingConfig(), paused)
 
+        mock_typer.erase_trigger_key.assert_called_once()
         mock_typer.type_text.assert_called_once_with("hello", 10, 0, False)
 
     def test_passes_compensate_indent(self):

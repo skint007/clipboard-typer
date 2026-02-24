@@ -33,6 +33,12 @@ def on_hotkey_triggered(typer_backend, typing_config, paused_event):
     logger.debug("Waiting %.0fms for modifier release", typing_config.start_delay_ms)
     time.sleep(delay)
 
+    # Erase the character produced by the hotkey trigger key (e.g. 'v' from ctrl+alt+v)
+    try:
+        typer_backend.erase_trigger_key()
+    except Exception:
+        logger.debug("Failed to erase trigger key", exc_info=True)
+
     try:
         typer_backend.type_text(text, typing_config.delay_ms, typing_config.chunk_size,
                                typing_config.compensate_indent)
