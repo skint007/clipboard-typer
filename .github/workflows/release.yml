@@ -198,7 +198,7 @@ jobs:
         uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
         with:
           pkgname: clipboard-typer
-          pkgbuild_path: aur/PKGBUILD
+          pkgbuild: aur/PKGBUILD
           assets: |
             aur/.SRCINFO
           commit_username: skint007
