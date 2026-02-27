@@ -207,7 +207,7 @@ jobs:
       - name: Update .SRCINFO version
         run: |
           sed -i "s/pkgver = .*/pkgver = ${{ steps.version.outputs.version }}/" aur/.SRCINFO
-          sed -i "s|source = clipboard-typer-.*\.tar\.gz::.*|source = clipboard-typer-${{ steps.version.outputs.version }}.tar.gz::https://github.com/skint007/key-sender/archive/v${{ steps.version.outputs.version }}.tar.gz|" aur/.SRCINFO
+          sed -i "s|source = clipboard-typer-.*\.tar\.gz::.*|source = clipboard-typer-${{ steps.version.outputs.version }}.tar.gz::https://github.com/skint007/clipboard-typer/archive/v${{ steps.version.outputs.version }}.tar.gz|" aur/.SRCINFO
 
       - name: Deploy to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v3.0.1

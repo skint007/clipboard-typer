@@ -22,8 +22,8 @@ dev = ["pytest>=8.0", "pytest-mock>=3.12"]
 clipboard-typer = "clipboard_typer.app:main"
 
 [project.urls]
-Homepage = "https://github.com/skint007/key-sender"
-Source = "https://github.com/skint007/key-sender"
+Homepage = "https://github.com/skint007/clipboard-typer"
+Source = "https://github.com/skint007/clipboard-typer"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/clipboard_typer"]
