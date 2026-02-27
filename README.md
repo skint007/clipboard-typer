@@ -8,7 +8,7 @@ Type clipboard contents keystroke-by-keystroke into the active window. Designed 
 - **Multiple typing backends** — pynput (native), ydotool, wtype, xdotool
 - **Automatic backend selection** — detects Wayland/X11 and picks the best available backend
 - **System tray icon** — visual active/paused state with pause/resume toggle
-- **Settings GUI** — tkinter dialog with dark mode detection
+- **Settings GUI** — Qt dialog with dark theme (PySide6)
 - **Configurable typing speed** — adjustable delay, chunk size, and start delay
 - **Editor indent compensation** — clears auto-indent after newlines
 - **Systemd service** — run as a user service on Linux

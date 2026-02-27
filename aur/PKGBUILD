@@ -10,6 +10,7 @@ depends=(
     'python>=3.12'
     'python-pynput'
     'python-pyperclip'
+    'pyside6'
 )
 makedepends=(
     'python-build'
