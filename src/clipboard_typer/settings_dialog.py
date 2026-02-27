@@ -187,6 +187,7 @@ def _build_and_run(config_path: Path) -> int:
     layout.addWidget(buttons)
 
     dialog.exec()
+    app.quit()
     return 0 if saved else 1
 
 
