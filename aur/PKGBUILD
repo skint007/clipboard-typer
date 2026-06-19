@@ -1,6 +1,7 @@
 # Maintainer: skint007 <archlinux.repose742@passmail.net>
+# Built from source by the `paw` personal repo CI (not the official AUR).
 pkgname=clipboard-typer
-pkgver=0.1.0
+pkgver=0.0.0
 pkgrel=1
 pkgdesc="Type clipboard contents keystroke-by-keystroke into the active window"
 arch=('any')
@@ -13,6 +14,7 @@ depends=(
     'pyside6'
 )
 makedepends=(
+    'git'
     'python-build'
     'python-installer'
     'python-wheel'
@@ -30,21 +32,33 @@ optdepends=(
     'xdotool: X11 keystroke backend'
     'wl-clipboard: clipboard access on Wayland'
 )
-source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+conflicts=('clipboard-typer-bin' 'clipboard-typer-git')
+source=("git+https://github.com/skint007/clipboard-typer.git")
 sha256sums=('SKIP')
 
+pkgver() {
+    cd "$srcdir/$pkgname"
+    # Base version from pyproject.toml + a monotonic git suffix, e.g. 0.1.0.r37.a1b2c3d.
+    # Every commit bumps the version, so a paw rebuild always reads as an update.
+    local v r h
+    v=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+    r=$(git rev-list --count HEAD)
+    h=$(git rev-parse --short=7 HEAD)
+    printf '%s.r%s.%s' "$v" "$r" "$h"
+}
+
 build() {
-    cd "$pkgname-$pkgver"
+    cd "$srcdir/$pkgname"
     python -m build --wheel --no-isolation
 }
 
 check() {
-    cd "$pkgname-$pkgver"
-    PYTHONPATH="$PWD/src" python -m pytest
+    cd "$srcdir/$pkgname"
+    QT_QPA_PLATFORM=offscreen PYTHONPATH="$PWD/src" python -m pytest
 }
 
 package() {
-    cd "$pkgname-$pkgver"
+    cd "$srcdir/$pkgname"
     python -m installer --destdir="$pkgdir" dist/*.whl
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
     install -Dm644 clipboard-typer.service "$pkgdir/usr/lib/systemd/user/$pkgname.service"

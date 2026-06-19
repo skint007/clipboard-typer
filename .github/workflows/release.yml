@@ -188,35 +188,5 @@ jobs:
           generate_release_notes: true
           files: release-files/*
 
-  # ─── Publish to AUR ──────────────────────────────────────────
-  publish-aur:
-    name: Publish to AUR
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Update PKGBUILD version
-        run: |
-          sed -i "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" aur/PKGBUILD
-
-      - name: Update .SRCINFO version
-        run: |
-          sed -i "s/pkgver = .*/pkgver = ${{ steps.version.outputs.version }}/" aur/.SRCINFO
-          sed -i "s|source = clipboard-typer-.*\.tar\.gz::.*|source = clipboard-typer-${{ steps.version.outputs.version }}.tar.gz::https://github.com/skint007/clipboard-typer/archive/v${{ steps.version.outputs.version }}.tar.gz|" aur/.SRCINFO
-
-      - name: Deploy to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
-        with:
-          pkgname: clipboard-typer
-          pkgbuild: aur/PKGBUILD
-          assets: |
-            aur/.SRCINFO
-          commit_username: skint007
-          commit_email: ${{ secrets.AUR_EMAIL }}
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          force_push: true
+  # The package is distributed via the personal `paw` repo, which builds and
+  # signs it from source itself (see aur/PKGBUILD). No AUR publish job is needed.
